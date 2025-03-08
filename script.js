@@ -5,6 +5,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const amountInput = document.getElementById('amount');
     const expenseChart = document.getElementById('expense-chart');
 
+    let selectedMonth;
+    let selectedYear;
+    let myChart;
+
     // Generate year options dynamically
     for (let year = 2020; year <= 2040; year++) {
         const option = document.createElement('option');
@@ -41,14 +45,10 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.setItem(key, JSON.stringify(expenses[month]));
     }
 
-    // Handle Form submission
-    function handleSubmit(event) {
-        event.preventDefault();
-
-        const selectedMonth = monthSelect.value;
-        const selectedYear = yearSelect.value;
-        const category = event.target.category.value;
-        const amount = parseFloat(event.target.amount.value);
+    // Get selected month & year
+    function getSelectedMonthAndYear() {
+        selectedMonth = monthSelect.value;
+        selectedYear = yearSelect.value;
 
         if (!selectedMonth || !selectedYear) {
             alert('Month or year not selected');
@@ -58,10 +58,62 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!expenses[selectedMonth]) {
             expenses[selectedMonth] = { Housing: 0, Food: 0, Transportation: 0, Bills: 0, Miscellaneous: 0 };
         }
+    }
+
+    // Update Chart
+    function updateChart() {
+        getSelectedMonthAndYear();
 
         const expenseData = getExpensesFromLocalStorage(selectedMonth, selectedYear);
         Object.assign(expenses[selectedMonth], expenseData);
 
+        const ctx = expenseChart.getContext('2d');
+
+        if (myChart) {
+            myChart.destroy();
+        }
+
+        myChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+              labels: Object.keys(expenses[selectedMonth]),
+              datasets: [{
+                data: Object.values(expenses[selectedMonth]),
+                backgroundColor: [
+                    '#FF6384', // Housing
+                    '#4CAF50', // Food
+                    '#FFCE56', // Transportation
+                    '#36A2EB', // Bills
+                    '#FF9F40', // Miscellaneous
+                ],
+              }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top',
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(tooltipItem) {
+                                return `${tooltipItem.label}: $${tooltipItem.raw}`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // Handle Form submission
+    function handleSubmit(event) {
+        event.preventDefault();
+        getSelectedMonthAndYear();
+
+        const category = event.target.category.value;
+        const amount = parseFloat(event.target.amount.value);
         const currentAmount = expenses[selectedMonth][category] || 0;
 
         if (amount > 0) {
@@ -73,10 +125,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         saveExpensesToLocalStorage(selectedMonth, selectedYear);
+        updateChart();
         amountInput.value = '';
     }
 
     expenseForm.addEventListener('submit', handleSubmit);
+    monthSelect.addEventListener('change', updateChart);
+    yearSelect.addEventListener('change', updateChart);
 
     // Set default month and year based on current month and year 
     function setDefaultMonthYear() {
@@ -88,4 +143,5 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     setDefaultMonthYear();
+    updateChart();
 });
